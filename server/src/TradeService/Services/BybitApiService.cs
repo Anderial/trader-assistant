@@ -79,9 +79,8 @@ public class BybitApiService : IBybitApiService
         return type switch
         {
             TradingPairType.Spot => "spot",
-            TradingPairType.LinearFutures => "linear",
-            TradingPairType.InverseFutures => "inverse",
-            TradingPairType.Option => "option",
+            TradingPairType.Futures => "linear",
+            TradingPairType.Options => "option",
             _ => "spot"
         };
     }
@@ -90,21 +89,108 @@ public class BybitApiService : IBybitApiService
     {
         return new TradingPair
         {
+            Id = Guid.NewGuid().ToString(),
             Symbol = bybitPair.Symbol,
-            BaseCoin = bybitPair.BaseCoin,
-            QuoteCoin = bybitPair.QuoteCoin,
-            Status = bybitPair.Status,
+            BaseAsset = bybitPair.BaseCoin,
+            QuoteAsset = bybitPair.QuoteCoin,
+            Status = bybitPair.Status.Equals("Trading", StringComparison.OrdinalIgnoreCase) 
+                ? TradingPairStatus.Inactive 
+                : TradingPairStatus.Inactive,
             Type = type,
-            MinOrderQty = ParseDecimal(bybitPair.LotSizeFilter.MinOrderQty),
-            MaxOrderQty = ParseDecimal(bybitPair.LotSizeFilter.MaxOrderQty),
-            TickSize = ParseDecimal(bybitPair.PriceFilter.TickSize),
-            LotSizeFilter = 0, // Заполним позже если нужно
-            IsTrading = bybitPair.Status.Equals("Trading", StringComparison.OrdinalIgnoreCase),
+            Exchange = ExchangeType.Bybit,
+            IsActive = bybitPair.Status.Equals("Trading", StringComparison.OrdinalIgnoreCase),
+            CreatedAt = DateTime.UtcNow,
             LastUpdated = DateTime.UtcNow,
-            LastPrice = 0, // Получим в отдельном запросе
-            Volume24H = 0, // Получим в отдельном запросе
-            PriceChange24H = 0, // Получим в отдельном запросе
-            PriceChangePercent24H = 0 // Получим в отдельном запросе
+            LastPrice = null,
+            Volume24h = null,
+            PriceChange24h = null
+        };
+    }
+
+    public async Task<TradingPairMarketData?> GetMarketDataAsync(string symbol, TradingPairType type)
+    {
+        try
+        {
+            var category = GetCategoryFromType(type);
+            var endpoint = $"/v5/market/tickers?category={category}&symbol={symbol}";
+
+            _logger.LogInformation("Fetching market data for {Symbol} in category: {Category}", symbol, category);
+
+            var response = await _httpClient.GetStringAsync(endpoint);
+            var apiResponse = JsonConvert.DeserializeObject<TickerResponse>(response);
+
+            if (apiResponse?.RetCode != 0)
+            {
+                _logger.LogError("Bybit API returned error: {ErrorCode} - {ErrorMessage}",
+                    apiResponse?.RetCode, apiResponse?.RetMsg);
+                return null;
+            }
+
+            var ticker = apiResponse.Result.List.FirstOrDefault();
+            if (ticker == null)
+            {
+                _logger.LogWarning("No ticker data found for {Symbol}", symbol);
+                return null;
+            }
+
+            var marketData = MapToMarketData(ticker, symbol, type);
+            
+            _logger.LogInformation("Successfully fetched market data for {Symbol}: Price={Price}, Volume={Volume}",
+                symbol, marketData.CurrentPrice, marketData.Volume24h);
+
+            return marketData;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch market data for {Symbol}:{Type}", symbol, type);
+            return null;
+        }
+    }
+
+    private static TradingPairMarketData MapToMarketData(BybitTicker ticker, string symbol, TradingPairType type)
+    {
+        // Определяем базовый и котируемый актив из символа
+        var baseAsset = "";
+        var quoteAsset = "";
+        
+        if (symbol.EndsWith("USDT"))
+        {
+            baseAsset = symbol.Substring(0, symbol.Length - 4);
+            quoteAsset = "USDT";
+        }
+        else if (symbol.EndsWith("USDC"))
+        {
+            baseAsset = symbol.Substring(0, symbol.Length - 4);
+            quoteAsset = "USDC";
+        }
+        else if (symbol.EndsWith("USD"))
+        {
+            baseAsset = symbol.Substring(0, symbol.Length - 3);
+            quoteAsset = "USD";
+        }
+        else
+        {
+            // Для других случаев можно попробовать определить по длине
+            baseAsset = symbol.Length > 6 ? symbol.Substring(0, symbol.Length - 3) : symbol;
+            quoteAsset = symbol.Length > 6 ? symbol.Substring(symbol.Length - 3) : "";
+        }
+
+        return new TradingPairMarketData
+        {
+            Symbol = symbol,
+            Type = type,
+            BaseAsset = baseAsset,
+            QuoteAsset = quoteAsset,
+            CurrentPrice = ParseDecimal(ticker.LastPrice),
+            Volume24h = ParseDecimal(ticker.Volume24h),
+            PriceChange24h = ParseDecimal(ticker.PrevPrice24h) > 0 
+                ? ParseDecimal(ticker.LastPrice) - ParseDecimal(ticker.PrevPrice24h) 
+                : null,
+            PriceChangePercent24h = ParseDecimal(ticker.Price24hPcnt) * 100, // Конвертируем в проценты
+            HighPrice24h = ParseDecimal(ticker.HighPrice24h),
+            LowPrice24h = ParseDecimal(ticker.LowPrice24h),
+            IsActive = true,
+            LastUpdateTime = DateTime.UtcNow
         };
     }
 

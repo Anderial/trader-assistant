@@ -14,6 +14,9 @@ builder.Host.UseDistributedKitService(services =>
     // Регистрируем сервисы в Orleans DI контейнере
     services.AddHttpClient<IBybitApiService, BybitApiService>();
     services.AddTransient<IBybitApiService, BybitApiService>();
+    services.AddSingleton<IBybitWebSocketService, BybitWebSocketService>();
+    services.AddSingleton<IWebSocketManager, TradeService.Services.WebSocketManager>();
+    services.AddHostedService<TradeService.Services.WebSocketManager>();
 });
 
 var app = builder.Build();

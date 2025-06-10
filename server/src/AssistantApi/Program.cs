@@ -1,4 +1,3 @@
-using AssistantApi.Services;
 using DistributedKit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,9 +25,6 @@ builder.Services.AddSwaggerGen(c =>
 
 // Добавляем Orleans Client с Rant.DistributedKit
 builder.Host.UseDistributedKitClient("trader-assistant-api");
-
-// Регистрируем сервисы
-builder.Services.AddSingleton<IMockDataService, MockDataService>();
 
 // Настройка CORS для frontend
 builder.Services.AddCors(options =>
