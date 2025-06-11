@@ -1,0 +1,203 @@
+<div class="trading-pairs-container">
+  <!-- Header -->
+  <div class="trading-pairs-header">
+    <h2>Торговые пары Bybit</h2>
+    <div class="header-controls">
+      <select 
+        class="type-filter"
+        [(ngModel)]="selectedType"
+        (ngModelChange)="onTypeChange($event)">
+        <option *ngFor="let type of availableTradingPairTypes" [value]="type.value">
+          {{ type.label }}
+        </option>
+      </select>
+      <button 
+        class="btn btn-refresh"
+        (click)="refreshTradingPairs()"
+        [disabled]="isLoading">
+        <i class="icon-refresh" [class.spinning]="isLoading"></i>
+        Обновить пары
+      </button>
+      <button 
+        class="btn btn-refresh"
+        (click)="refreshMarketData()"
+        [disabled]="isLoadingMarketData">
+        <i class="icon-refresh" [class.spinning]="isLoadingMarketData"></i>
+        Обновить цены
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="trading-pairs-stats">
+    <div class="stat-item">
+      <span class="stat-label">Всего пар:</span>
+      <span class="stat-value">{{ tradingPairs.length }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Отфильтровано:</span>
+      <span class="stat-value">{{ filteredPairs.length }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Показано:</span>
+      <span class="stat-value">{{ pagedPairs.length }} из {{ filteredPairs.length }}</span>
+    </div>
+    <div class="stat-item" *ngIf="lastUpdated">
+      <span class="stat-label">Последнее обновление:</span>
+      <span class="stat-value">{{ lastUpdated | date:'HH:mm:ss dd.MM.yyyy' }}</span>
+    </div>
+  </div>
+
+
+
+  <!-- Error Message -->
+  <div class="error-message" *ngIf="errorMessage">
+    <i class="icon-error"></i>
+    {{ errorMessage }}
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-container" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <span>Загрузка торговых пар...</span>
+  </div>
+
+  <!-- Trading Pairs Table -->
+  <div class="trading-pairs-table" *ngIf="!isLoading && pagedPairs.length > 0">
+    <div class="table-header">
+      <div class="col-symbol">Символ</div>
+      <div class="col-type">Тип</div>
+      <div class="col-base">Базовая</div>
+      <div class="col-quote">Котируемая</div>
+      <div class="col-status">Статус</div>
+      <div class="col-min-qty">Цена</div>
+      <div class="col-max-qty">Объем 24ч</div>
+      <div class="col-tick">Изменение 24ч</div>
+      <div class="col-analysis">Анализ</div>
+    </div>
+    
+    <div class="table-body">
+      <div 
+        class="table-row"
+        *ngFor="let pair of pagedPairs; trackBy: trackBySymbol"
+        [class.trading]="pair.isActive">
+        <div class="col-symbol">
+          <span class="symbol-text">{{ pair.symbol }}</span>
+        </div>
+        <div class="col-type">
+          <span class="type-badge" [attr.data-type]="pair.type">
+            {{ getTypeLabel(pair.type) }}
+          </span>
+        </div>
+        <div class="col-base">{{ pair.baseAsset }}</div>
+        <div class="col-quote">{{ pair.quoteAsset }}</div>
+        <div class="col-status">
+          <span class="status-badge" [class.active]="pair.isActive">
+            {{ getStatusLabel(pair.status) }}
+          </span>
+        </div>
+        <div class="col-min-qty">
+          <ng-container *ngIf="getMarketData(pair) as marketData; else noData">
+            {{ marketData.currentPrice | number:'1.0-8' }}
+          </ng-container>
+          <ng-template #noData>
+            <span *ngIf="isLoadingMarketData" class="loading-text">...</span>
+            <span *ngIf="!isLoadingMarketData">-</span>
+          </ng-template>
+        </div>
+        <div class="col-max-qty">
+          <ng-container *ngIf="getMarketData(pair) as marketData; else noData2">
+            {{ marketData.volume24h | number:'1.0-2' }}
+          </ng-container>
+          <ng-template #noData2>
+            <span *ngIf="isLoadingMarketData" class="loading-text">...</span>
+            <span *ngIf="!isLoadingMarketData">-</span>
+          </ng-template>
+        </div>
+        <div class="col-tick">
+          <ng-container *ngIf="getMarketData(pair) as marketData; else noData3">
+            <span [class]="marketData.priceChangePercent24h! >= 0 ? 'positive' : 'negative'">
+              {{ marketData.priceChangePercent24h | number:'1.0-2' }}%
+            </span>
+          </ng-container>
+          <ng-template #noData3>
+            <span *ngIf="isLoadingMarketData" class="loading-text">...</span>
+            <span *ngIf="!isLoadingMarketData">-</span>
+          </ng-template>
+        </div>
+        <div class="col-analysis">
+          <button 
+            class="btn-analysis btn-start"
+            (click)="startAnalysis(pair)"
+            title="Запустить анализ">
+            ▶
+          </button>
+          <button 
+            class="btn-analysis btn-stop"
+            (click)="stopAnalysis(pair)"
+            title="Остановить анализ">
+            ⏸
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination Controls Bottom -->
+  <div class="pagination-controls pagination-bottom" *ngIf="!isLoading && filteredPairs.length > 0">
+    <div class="page-size-selector">
+      <label>Показать:</label>
+      <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)">
+        <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+      </select>
+      <span>записей</span>
+    </div>
+    
+    <div class="page-navigation">
+      <button 
+        class="btn btn-page"
+        (click)="goToFirstPage()"
+        [disabled]="currentPage === 1">
+        ≪
+      </button>
+      <button 
+        class="btn btn-page"
+        (click)="goToPreviousPage()"
+        [disabled]="currentPage === 1">
+        ‹
+      </button>
+      
+      <button 
+        *ngFor="let page of pageNumbers"
+        class="btn btn-page"
+        [class.active]="page === currentPage"
+        (click)="goToPage(page)">
+        {{ page }}
+      </button>
+      
+      <button 
+        class="btn btn-page"
+        (click)="goToNextPage()"
+        [disabled]="currentPage === totalPages">
+        ›
+      </button>
+      <button 
+        class="btn btn-page"
+        (click)="goToLastPage()"
+        [disabled]="currentPage === totalPages">
+        ≫
+      </button>
+    </div>
+    
+    <div class="page-info">
+      Страница {{ currentPage }} из {{ totalPages }}
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!isLoading && filteredPairs.length === 0">
+    <i class="icon-empty"></i>
+    <h3>Торговые пары не найдены</h3>
+    <p>Попробуйте изменить фильтр или обновить данные</p>
+  </div>
+</div> 

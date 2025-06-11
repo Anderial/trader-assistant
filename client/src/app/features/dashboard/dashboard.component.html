@@ -1,0 +1,176 @@
+<div class="dashboard-container">
+  <!-- Trading Pairs Section - Active -->
+  <div class="dashboard-section active">
+    <app-trading-pairs></app-trading-pairs>
+  </div>
+
+  <!-- Disabled Sections -->
+  <div class="dashboard-section disabled">
+    <div class="disabled-overlay">
+      <h3>В разработке</h3>
+      <p>Эта функция будет доступна в следующих версиях</p>
+    </div>
+    
+    <!-- Futures Positions Table -->
+    <div class="section-header">
+      <h3>Фьючерсные позиции</h3>
+      <div class="section-info">
+        <span class="total-pnl negative">PnL: -$127.45</span>
+        <span class="position-count">3 позиции</span>
+      </div>
+    </div>
+
+    <div class="positions-table">
+      <div class="table-header">
+        <div class="col-symbol">Символ</div>
+        <div class="col-side">Сторона</div>
+        <div class="col-size">Размер</div>
+        <div class="col-entry">Вход</div>
+        <div class="col-mark">Марка</div>
+        <div class="col-pnl">PnL</div>
+        <div class="col-margin">Маржа</div>
+        <div class="col-actions">Действия</div>
+      </div>
+      
+      <div class="table-body">
+        <div class="table-row" *ngFor="let position of futuresPositions">
+          <div class="col-symbol">
+            <span class="symbol-text">{{ position.symbol }}</span>
+          </div>
+          <div class="col-side">
+            <span class="side-badge" [class]="position.side.toLowerCase()">
+              {{ position.side }}
+            </span>
+          </div>
+          <div class="col-size">{{ position.size | currency:'USD':'symbol':'1.0-4' }}</div>
+          <div class="col-entry">{{ position.entryPrice | currency:'USD':'symbol':'1.2-2' }}</div>
+          <div class="col-mark">{{ position.markPrice | currency:'USD':'symbol':'1.2-2' }}</div>
+          <div class="col-pnl">
+            <span class="pnl-value" [class]="position.pnl >= 0 ? 'positive' : 'negative'">
+              {{ position.pnl | currency:'USD':'symbol':'1.2-2' }}
+            </span>
+          </div>
+          <div class="col-margin">{{ position.margin | currency:'USD':'symbol':'1.2-2' }}</div>
+          <div class="col-actions">
+            <button class="btn btn-sm btn-danger" (click)="closePosition(position.symbol)">
+              Закрыть
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spot Positions - Disabled -->
+  <div class="dashboard-section disabled">
+    <div class="disabled-overlay">
+      <h3>В разработке</h3>
+      <p>Эта функция будет доступна в следующих версиях</p>
+    </div>
+    
+    <div class="section-header">
+      <h3>Спотовые позиции</h3>
+      <div class="section-info">
+        <span class="total-value">Общая стоимость: $15,234.67</span>
+        <span class="position-count">8 активов</span>
+      </div>
+    </div>
+
+    <div class="positions-table">
+      <div class="table-header">
+        <div class="col-asset">Актив</div>
+        <div class="col-balance">Баланс</div>
+        <div class="col-price">Цена</div>
+        <div class="col-value">Стоимость</div>
+        <div class="col-change">Изменение</div>
+        <div class="col-actions">Действия</div>
+      </div>
+      
+      <div class="table-body">
+        <div class="table-row" *ngFor="let position of spotPositions">
+          <div class="col-asset">
+            <span class="asset-name">{{ position.asset }}</span>
+          </div>
+          <div class="col-balance">{{ position.balance | number:'1.2-8' }}</div>
+          <div class="col-price">{{ position.price | currency:'USD':'symbol':'1.2-2' }}</div>
+          <div class="col-value">{{ position.value | currency:'USD':'symbol':'1.2-2' }}</div>
+          <div class="col-change">
+            <span class="change-value" [class]="position.change24h >= 0 ? 'positive' : 'negative'">
+              {{ position.change24h | percent:'1.2-2' }}
+            </span>
+          </div>
+          <div class="col-actions">
+            <button class="btn btn-sm btn-primary" (click)="tradeAsset(position.asset)">
+              Торговать
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Status - Disabled -->
+  <div class="dashboard-section disabled">
+    <div class="disabled-overlay">
+      <h3>В разработке</h3>
+      <p>Эта функция будет доступна в следующих версиях</p>
+    </div>
+    
+    <div class="section-header">
+      <h3>Статус системы</h3>
+    </div>
+
+    <div class="system-status-grid">
+      <div class="status-card">
+        <div class="status-header">
+          <h4>WebSocket соединения</h4>
+          <span class="status-indicator active"></span>
+        </div>
+        <div class="status-body">
+          <div class="metric">
+            <span class="metric-label">Активных:</span>
+            <span class="metric-value">12/15</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Задержка:</span>
+            <span class="metric-value">23ms</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-card">
+        <div class="status-header">
+          <h4>База данных</h4>
+          <span class="status-indicator active"></span>
+        </div>
+        <div class="status-body">
+          <div class="metric">
+            <span class="metric-label">Соединение:</span>
+            <span class="metric-value">Активно</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Задержка:</span>
+            <span class="metric-value">5ms</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-card">
+        <div class="status-header">
+          <h4>ML модели</h4>
+          <span class="status-indicator warning"></span>
+        </div>
+        <div class="status-body">
+          <div class="metric">
+            <span class="metric-label">Активных:</span>
+            <span class="metric-value">3/4</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Точность:</span>
+            <span class="metric-value">87.3%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

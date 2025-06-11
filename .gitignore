@@ -41,3 +41,41 @@ docker-compose.yml
 
 # Custom rules
 rules.mdc
+
+# Angular
+client/node_modules/
+client/dist/
+client/.angular/
+client/tmp/
+client/out-tsc/
+client/bazel-out/
+
+# Angular dependencies
+client/*.log
+client/npm-debug.log*
+client/yarn-debug.log*
+client/yarn-error.log*
+client/lerna-debug.log*
+
+# Runtime data
+client/pids
+client/*.pid
+client/*.seed
+client/*.pid.lock
+
+# Coverage directory used by tools like istanbul
+client/coverage/
+client/.nyc_output/
+
+# ESLint cache
+client/.eslintcache
+
+# Stores VSCode versions used for testing VSCode extensions
+client/.vscode-test
+
+# yarn v2
+client/.yarn/cache
+client/.yarn/unplugged
+client/.yarn/build-state.yml
+client/.yarn/install-state.gz
+client/.pnp.*
